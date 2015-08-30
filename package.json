@@ -1,0 +1,30 @@
+{
+  "name": "webrtc-server",
+  "version": "0.1.0-SNAPSHOT",
+  "description": "Simple WebRTC server for Node.js",
+  "author": "Eelco Cramer <eelco@servicelab.org>",
+  "keywords": [
+    "webrtc",
+    "stream",
+    "mp3",
+    "chrome"
+  ],
+  "directories": {
+    "lib": "./lib"
+  },
+  "main": "./server.js",
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "dependencies": {
+    "node-static": ">= 0.7.x",
+    "node-uuid": ">= 1.4.x",
+    "open": "0.0.5",
+    "socket.io": ">= 0.9.x"
+  },
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "express": "^4.13.3"
+  }
+}

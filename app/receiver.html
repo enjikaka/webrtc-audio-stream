@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Room</title>
+  <script src="/js/adapter.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div class="site">
+    <audio controls autoplay></audio>
+  </div>
+  <script src="js/receiver.js"></script>
+  <script>
+    var receiver = new Receiver('yolo', function(stream) {
+      document.querySelector('audio').src = URL.createObjectURL(stream);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Radio Station</title>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+	<div class="now-playing">
+		<figure>
+      <img alt="Cover Art">
+    </figure>
+	</div>
+
+  <audio></audio>
+
+  <div class="stream-control">
+    <input type="file" id="file-input">
+    <button>Play / Pause</button>
+    <button>Mute</button>
+  </div>
+  <script src="js/adapter.js"></script>
+  <script src="js/station.js"></script>
+  <script src="js/station-ui.js"></script>
+</body>
+</html>
