@@ -9,9 +9,6 @@
     "mp3",
     "chrome"
   ],
-  "directories": {
-    "lib": "./lib"
-  },
   "main": "./server.js",
   "os": [
     "darwin",
@@ -21,10 +18,8 @@
     "node-static": ">= 0.7.x",
     "node-uuid": ">= 1.4.x",
     "open": "0.0.5",
-    "socket.io": ">= 0.9.x"
-  },
-  "license": "BSD-3-Clause",
-  "devDependencies": {
+    "socket.io": ">= 0.9.x",
     "express": "^4.13.3"
-  }
+  },
+  "license": "BSD-3-Clause"
 }
