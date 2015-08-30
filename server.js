@@ -19,7 +19,6 @@ var port = process.env.PORT || 8080;
 http.listen(port, function() { 
 	console.log('Listening on port :' + port);
 	open('http://localhost:' + port + '/station.html');
-	open('http://localhost:' + port + '/receiver.html');
 });
 
 // keeping track of connections
