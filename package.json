@@ -1,8 +1,8 @@
 {
   "name": "webrtc-server",
-  "version": "0.1.0-SNAPSHOT",
+  "version": "0.0.1",
   "description": "Simple WebRTC server for Node.js",
-  "author": "Eelco Cramer <eelco@servicelab.org>",
+  "author": "Jeremy Karlsson <karlsson@jeremy.se>",
   "keywords": [
     "webrtc",
     "stream",
