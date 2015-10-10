@@ -1,3 +1,7 @@
+body {
+  margin: 0;
+}
+
 #waveform-wrapper {
   width: 450px;
   position: relative;
@@ -22,4 +26,35 @@
   	width: 450px;
   	height: 80px;
 	}
+}
+
+#cover {
+  max-width: 256px;
+  margin: 0 auto;
+  display: block;
+}
+
+#media-description {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  max-width: 256px;
+  margin: 2rem auto 0;
+
+  #tite {
+    font-size: 1.2rem;
+  }
+}
+
+#main-header {
+  background-color: #565656;
+  color: #fafafa;
+  text-align: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+
+  #station-name::before {
+    content: "Current station: ";
+    padding-right: .5rem;
+  }
 }
