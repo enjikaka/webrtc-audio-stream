@@ -21,5 +21,10 @@
     "socket.io": ">= 0.9.x",
     "express": "^4.13.3"
   },
-  "license": "BSD-3-Clause"
+  "license": "BSD-3-Clause",
+  "devDependencies": {
+    "gulp": "^3.9.0",
+    "gulp-autoprefixer": "^3.0.2",
+    "gulp-sass": "^2.0.4"
+  }
 }

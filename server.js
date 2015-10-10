@@ -74,9 +74,7 @@ io.sockets.on('connection', function(socket) {
 		}
 	});
 
-	socket.on('song-meta', function(data) {
-		socket.emit('song-meta', data.media);
+	socket.on('image-data', function(message) {
+		sockets[message.to].emit('image-data', message);
 	});
 });
-
-

@@ -1,0 +1,22 @@
+#waveform-wrapper {
+  width: 450px;
+  position: relative;
+  height: 80px;
+  margin: 1.8rem auto 0.6rem auto; }
+  #waveform-wrapper #playbar {
+    width: 100%;
+    height: 80px;
+    background-color: #fff;
+    opacity: .4;
+    display: block;
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 20;
+    -webkit-transform: translateX(0%);
+        -ms-transform: translateX(0%);
+            transform: translateX(0%);
+    will-change: transform; }
+  #waveform-wrapper #waveform {
+    width: 450px;
+    height: 80px; }

@@ -1,19 +1,30 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
 	<title>Room</title>
+  <link rel="stylesheet" href="css/receiver.css">
   <script src="/js/adapter.js"></script>
   <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
   <div class="site">
+    <header id="main-header">
+      <span id="station-name"></span>
+    </header>
+    <div id="waveform-wrapper">
+      <span id="playbar"></span>
+      <img id="waveform">
+    </div>
     <audio controls autoplay></audio>
+    <img id="cover">
+    <div class="media-description">
+      <span id="title"></span>
+      <span id="artist"></span>
+    </div>
   </div>
   <script src="js/receiver.js"></script>
-  <script>
-    var receiver = new Receiver('yolo', function(stream) {
-      document.querySelector('audio').src = URL.createObjectURL(stream);
-    });
-  </script>
+  <script src="js/receiver-ui.js"></script>
 </body>
 </html>

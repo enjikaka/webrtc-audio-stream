@@ -22,8 +22,15 @@ var Station = (function(stationName, callback) {
 		mediaSource, 
 		mediaBuffer, 
 		remoteDestination, 
-		mediaDescription,
-		peers = {};
+		mediaDescription = {
+			title: null,
+			artist: null,
+			cover: null,
+			album: null
+		},
+		peers = {},
+		currentWaveform,
+		currentCover;
 
 	var audioState = {
 		stopTime: undefined,
@@ -37,9 +44,9 @@ var Station = (function(stationName, callback) {
 	var socket = io.connect();
 
 	function Station(stationName, callback) {
-		socket.on('your-id', function(id) {
+		socket.on('your-id', function(stationId) {
 			if (!stationName) {
-				stationName = id;
+				stationName = stationId;
 			}
 
 			socket.emit('set-room-name', {
@@ -47,55 +54,66 @@ var Station = (function(stationName, callback) {
 			});
 		});
 
-		socket.on('disconnected', function(from) {
-			peers[from] = undefined;
+		socket.on('disconnected', function(receiverId) {
+			peers[receiverId] = undefined;
 		});
 
 		socket.on('logon', function(message) {
-			var peer = new RTCPeerConnection(config, optionals),
-				from = message.from;
+
+			var peer = new RTCPeerConnection(config, optionals);
+			var receiverId = message.from;
 			
 			peer.addEventListener('icecandidate', function(event) {
 				var message = {
 					from: stationName, 
-					to: from, 
+					to: receiverId, 
 					data: {
 						type: 'candidate', 
 						candidate: event.candidate 
 					}
 				};
+
 				socket.emit('message', message);
 			});
 
-			peers[from] = {
-				peerconnection: peer, 
-				stream: undefined
+			// Add Receiver to object of connected peers
+			var receiver = {
+				id: receiverId,
+				peerConnection: peer, 
+				stream: undefined,
+				mediaDescriptionChannel: peer.createDataChannel('mediaDescription', { reliable: true })
 			};
 
-			startPlayingIfPossible(from);
+			receiver.mediaDescriptionChannel.onopen = function() {
+				startPlayingIfPossible(receiverId);
+			};
 
-			console.log(from + ' logged on.');
-			console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
+			peers[receiverId] = receiver;
+
+			receiverOffer(receiverId);
+
+			//console.log(receiverId + ' logged on.');
+			//console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
 		});
 
 		socket.on('logoff', function(message) {
-			console.log(message.from + ' logged out.');
+			//console.log(message.from + ' logged out.');
 			
 			delete peers[message.from];
 
-			console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
+			//console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
 		});
 
 		// when a message is received from a listener we'll update the rtc session accordingly
 		socket.on('message', function(message) {
 			//console.log('Received message: ' + JSON.stringify(message.data));
-
+			var receiver = peers[message.from];
 			if (message.data.type === 'candidate') {
 				if (message.data.candidate) {
-					peers[message.from].peerconnection.addIceCandidate(new RTCIceCandidate(message.data.candidate));
+					receiver.peerConnection.addIceCandidate(new RTCIceCandidate(message.data.candidate));
 				}
 			} else if (message.data.type === 'sdp') {
-				peers[message.from].peerconnection.setRemoteDescription(new RTCSessionDescription(message.data.sdp));
+				receiver.peerConnection.setRemoteDescription(new RTCSessionDescription(message.data.sdp));
 			}
 		});
 
@@ -106,20 +124,62 @@ var Station = (function(stationName, callback) {
 	}
 
 	Station.prototype.playAudioFile = function(file) {
+		var songMeta = getInfoFromFileName(file.name);
+		window.durationHolder = document.createElement('audio');
+
+		mediaDescription = {
+			title: songMeta.title,
+			artist: songMeta.artist,
+			waveform: null,
+			cover: null,
+			duration: null,
+			startTime: null
+		};
+
+		window.durationHolder.src = URL.createObjectURL(file);
+		window.durationHolder.oncanplaythrough = function(e) {
+			mediaDescription.duration = e.target.duration;
+		};
+
 		var reader = new FileReader();
-
 		reader.onload = (function(readEvent) {
-			context.decodeAudioData(readEvent.target.result, function(buffer) {
-				if (mediaSource) {
-					mediaSource.stop(0);
-				}
+			new WaveformGenerator(readEvent.target.result, {drawMode: 'svg', waveformColor: '#ff6d00'}).then(function(dataUrl) {
+				currentWaveform = dataUrl;
+			}).then(function() {
+				ID3.loadTags(file.name, function() {
+				    var tags = ID3.getAllTags(file.name);
 
-				mediaBuffer = buffer;
-				playStream();
-				start = Date.now();
+				    if (tags.artist !== undefined) {
+				    	mediaDescription.artist = tags.artist;
+				    }
+				    if (tags.artist !== undefined) {
+				    	mediaDescription.title = tags.title;
+				    }
+				    
+			    	var image = tags.picture;
+			    	if (image !== undefined) {
+				    	var base64String = "";
+						for (var i = 0; i < image.data.length; i++) {
+						    base64String += String.fromCharCode(image.data[i]);
+						}
+						currentCover = "data:" + image.format + ";base64," + btoa(base64String);
+			    	}
+				}, { 
+					tags: ["artist", "title", "album", "year", "picture"],
+					dataReader: new FileAPIReader(file)
+				});
+			}).then(function() {
+				context.decodeAudioData(readEvent.target.result, function(buffer) {
+					if (mediaSource) {
+						mediaSource.stop(0);
+					}
+
+					mediaBuffer = buffer;
+					playStream();
+					start = Date.now();
+				});
 			});
 		});
-
 		reader.readAsArrayBuffer(file);
 	};
 
@@ -136,51 +196,86 @@ var Station = (function(stationName, callback) {
 		audioState.playing = true;
 	};
 
+	Station.prototype.getMediaDescription = function() {
+		return mediaDescription;
+	};
+
 	return Station;
 
-	// is called when SDP is received from a connected listener
-	function gotDescription(from, desc) {
-		peers[from].peerconnection.setLocalDescription(desc);
-		socket.emit('message', { from: stationName, to: from, data: { type: 'sdp', sdp: desc } });
+
+	function getInfoFromFileName(name) {
+	    name = name === null ? 'Unkown' : name;
+	    name = name.replace(/_/g, ' ');
+	    var artist = artist === null ? 'Unkown' : artist;
+	    if (name.indexOf(' - ') !== -1) {
+	        name = name.split(' - ');
+	        artist = name[0];
+	        name = name[1];
+	    }
+	    name = name.split('.')[0];
+	    return {
+	        artist: artist,
+	        title: name
+	    };
+	}
+
+	function receiverOffer(receiverId) {
+		var receiver = peers[receiverId];
+		receiver.peerConnection.createOffer(function(desc) {
+			receiver.peerConnection.setLocalDescription(desc);
+
+			socket.emit('message', {
+				from: stationName, 
+				to: receiver.id, 
+				data: {
+					type: 'sdp', 
+					sdp: desc 
+				}
+			});
+		}, function(e) {
+			console.error(e);
+		});
 	}
 
 	// checks if media is present and starts streaming media to a connected listener if possible
-	function startPlayingIfPossible(from) {
-		// add the stream to the peerconnection for this connection
+	function startPlayingIfPossible(receiverId) {
+		var receiver = peers[receiverId];
 		if (mediaSource && remoteDestination) {
-			var constraints = { mandatory: {}, optional: [] };
-			// constraints.optional[0] = { 'bandwidth' : 100 }; // does not seem to influence quality
-			peers[from].peerconnection.addStream(remoteDestination.stream, constraints);
-			peers[from].stream = remoteDestination.stream;
-			peers[from].peerconnection.createOffer(function(desc) {
-				gotDescription(from, desc);
-			}, failed);
-
-			sendMediaDescription(peers[from].dataChannel);
-		}
+			receiver.peerConnection.addStream(remoteDestination.stream);
+			receiver.stream = remoteDestination.stream;
+			receiverOffer(receiver.id);
+			sendMediaDescription(receiver);
+			sendWaveform();
+		}	
 	}
 
 	// Sends media meta information over a rtc data channel to a connected listener
-	function sendMediaDescription(channel) {
+	function sendMediaDescription(receiver) {
+		var channel = receiver.mediaDescriptionChannel;
+
+		mediaDescription.startTime = start;
+
 		if (mediaDescription && channel.readyState === 'open') {
-			var data = mediaDescription;
+			var data = JSON.stringify(mediaDescription);
 			channel.send(data);
 		}
 	}
 
-	function onDataChannelOpen() {
-		sendMediaDescription(this);
+	function sendWaveform() {
+		for (var peer in peers) {
+			socket.emit('image-data', {
+				to: peer,
+				waveform: currentWaveform,
+				cover: currentCover
+			});
+		}
 	}
 
-	function failed(code) {
-		log("Failure callback: " + code);
-	}
-
-	function playStream(offset) {
-		offset = offset ? offset : 0;
+	function playStream() {
 		mediaSource = context.createBufferSource();
 		mediaSource.buffer = mediaBuffer;
-		mediaSource.start(0, offset / 1000);
+		mediaSource.start(0);
+		start = Date.now();
 		//mediaSource.connect(gainNode);
 
 		// setup remote stream
@@ -197,7 +292,7 @@ var Station = (function(stationName, callback) {
 		for (var peer in peers) {
 			if (peers[peer].stream) {
 				peers[peer].stream.stop();
-				//peers[peer].peerconnection.removeStream(peers[peer].stream);
+				//peers[peer].peerConnection.removeStream(peers[peer].stream);
 				//peers[peer].stream = undefined;
 			}
 		}

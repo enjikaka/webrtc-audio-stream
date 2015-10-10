@@ -1,4 +1,9 @@
 var Receiver = (function(station, callback){
+	var socket;
+	var client;
+	var peer;
+	var mediaDescription = {};
+
 	// Configuraton for peer
 	var config = {
 		'iceServers': [
@@ -15,9 +20,11 @@ var Receiver = (function(station, callback){
 		]
 	};
 
+	// Constructor
 	function Receiver(station, callback) {
-		var socket = io.connect(), client;
-		var peer = new RTCPeerConnection(config, optionals);
+		socket = io.connect();
+		client;
+		peer = new RTCPeerConnection(config, optionals);
 
 		socket.on('your-id', function(id) {
 			client = id;
@@ -27,6 +34,11 @@ var Receiver = (function(station, callback){
 		    	from: client,
 		    	to: station
 		  	});
+		});
+
+		socket.on('image-data', function(data) {
+			mediaDescription.waveform = data.waveform;
+			mediaDescription.cover = data.cover;
 		});
 
 		peer.addEventListener('icecandidate', function(event) {
@@ -46,14 +58,18 @@ var Receiver = (function(station, callback){
 		});
 
 		socket.on('message', function(message) {
+			//console.debug(message.data.type);
 		  if (message.data.type === 'candidate') {
 		    if (message.data.candidate) {
 		      peer.addIceCandidate(new RTCIceCandidate(message.data.candidate));
 		    }
 		  } else if (message.data.type === 'sdp') {
+		  	//console.log('Received message: ' + JSON.stringify(message.data));
 		    peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp), function() {
 		      peer.createAnswer(function(desc) {
 		        peer.setLocalDescription(desc);
+
+		        //console.debug(desc);
 
 		        var message = {
 		          from: client,
@@ -76,14 +92,19 @@ var Receiver = (function(station, callback){
 		  }
 		});
 
-		socket.on('song-meta', function(data) {
-		  console.log(data);
-		});
-
 		window.addEventListener('beforeunload', function() {
 			socket.emit('logoff', {to: station, from: client});
 		});
+
+		mediaDescriptionChannel = peer.createDataChannel('mediaDescription');
+		mediaDescriptionChannel.onmessage = function(event) {
+			Object.assign(mediaDescription, JSON.parse(event.data));
+		};
 	}
+
+	Receiver.prototype.getMediaDescription = function() {
+		return mediaDescription;
+	};
 
 	return Receiver;
 })();
