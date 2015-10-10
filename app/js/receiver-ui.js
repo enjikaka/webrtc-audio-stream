@@ -2,6 +2,10 @@ var $ = function(q) {
 	return document.querySelector(q);
 };
 
+var $$ = function(q) {
+  return document.querySelectorAll(q);
+};
+
 window.requestAnimFrame = (function(){
   return  window.requestAnimationFrame       ||
           window.webkitRequestAnimationFrame ||
@@ -11,7 +15,7 @@ window.requestAnimFrame = (function(){
           };
 })();
 
-var receiver, duration;
+var receiver, duration, chat;
 
 function getStation() {
   var hash = document.location.hash;
@@ -26,7 +30,18 @@ function renderMetadata(metadata) {
 	$('#artist').innerHTML = metadata.artist;
   $('#waveform').src = metadata.waveform;
   $('#cover').src = metadata.cover;
-	$('#station-name').innerHTML = getStation();
+  var backgrounds = $$('.background');
+  for (var i = 0; i < backgrounds.length; i++) {
+    var bg = backgrounds[i];
+    bg.style.backgroundImage = 'url("'+metadata.cover+'")';
+  }
+	//$('#station-name').innerHTML = 'Station: ' + getStation();
+}
+
+function registerChatHandler() {
+  $('#send-message').addEventListener('click', function() {
+    chat.sendMessage($('#message').value);
+  });
 }
 
 function timeUpdate() {
@@ -45,6 +60,23 @@ window.onload = function() {
       document.querySelector('audio').src = URL.createObjectURL(stream);
       renderMetadata(receiver.getMediaDescription());
       timeUpdate();
+    });
+
+    console.debug('Creating chat instance for station ' + station);
+    chat = new ReceiverChat(station, 'Jeremy');
+    registerChatHandler();
+    chat.onMessage(function(data) {
+      var message = document.createElement('div');
+      message.classList.add('message');
+        var from = document.createElement('span');
+            from.innerHTML = data.from;
+            from.classList.add('from');
+        message.appendChild(from);
+        var paragraph = document.createElement('p');
+            paragraph.innerHTML = data.message;
+        message.appendChild(paragraph);
+      $('#messages').appendChild(message);
+      console.log(data);
     });
   } else {
     alert('No station entered');

@@ -77,4 +77,8 @@ io.sockets.on('connection', function(socket) {
 	socket.on('image-data', function(message) {
 		sockets[message.to].emit('image-data', message);
 	});
+
+	socket.on('chat', function(data) {
+		sockets[data.station].broadcast.emit('chat', data);
+	});
 });

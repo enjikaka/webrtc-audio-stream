@@ -8,3 +8,7 @@ gulp.task('sass', function() {
 		.pipe(autoprefixer())
 		.pipe(gulp.dest('app/css'));
 });
+
+gulp.task('sass:watch', function() {
+	gulp.watch('app/css/*.scss', ['sass']);
+});
