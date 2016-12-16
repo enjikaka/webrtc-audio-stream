@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Radio Station</title>
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+	<div class="now-playing">
+		<figure>
+      <img alt="Cover Art">
+    </figure>
+	</div>
+
+  <audio></audio>
+
+  <a href="receiver.html#!/yolo" target="_blank">Click here to listen to the broadcast</a>
+
+  <div class="stream-control">
+    <input type="file" id="file-input">
+    <button>Play / Pause</button>
+    <button>Mute</button>
+  </div>
+  <script src="adapter.js"></script>
+  <script src="http://cdn.rawgit.com/aadsm/jsmediatags/master/dist/jsmediatags.min.js"></script>
+  <script src="station.min.js"></script>
+</body>
+</html>

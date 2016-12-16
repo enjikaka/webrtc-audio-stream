@@ -1,21 +1,4 @@
-var $ = function(q) {
-	return document.querySelector(q);
-};
-
-var $$ = function(q) {
-  return document.querySelectorAll(q);
-};
-
-window.requestAnimFrame = (function(){
-  return  window.requestAnimationFrame       ||
-          window.webkitRequestAnimationFrame ||
-          window.mozRequestAnimationFrame    ||
-          function( callback ){
-            window.setTimeout(callback, 1000 / 60);
-          };
-})();
-
-var receiver, duration, chat;
+var receiver, duration, chat, currentTime;
 
 function getStation() {
   var hash = document.location.hash;
@@ -46,9 +29,9 @@ function registerChatHandler() {
 
 function timeUpdate() {
   (function animloop(){
-    requestAnimFrame(animloop);
+    requestAnimationFrame(animloop);
     //var currentTime = (Math.abs(receiver.getMediaDescription().startTime - Date.now()) / 1000);
-    var currentTime = (Math.abs(receiver.getMediaDescription().startTime - Date.now()) / 1000) - $('audio').currentTime;
+    currentTime = (Math.abs(receiver.getMediaDescription().startTime - Date.now()) / 1000) - $('audio').currentTime;
     $('#playbar').style.transform = 'translateX(' + (currentTime / duration) * 100 + '%)';
   })();
 }

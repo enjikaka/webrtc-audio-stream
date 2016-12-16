@@ -1,3 +1,6 @@
+var start;
+var muted;
+
 var Station = (function(stationName, callback) {
 	// Configuraton for peer
 	var config = {
@@ -11,7 +14,7 @@ var Station = (function(stationName, callback) {
 		optional: [
 			{
 				RtpDataChannels: true
-			} 
+			}
 		]
 	};
 
@@ -19,9 +22,9 @@ var Station = (function(stationName, callback) {
 	var context = new AudioContext(),
 		gainNode = context.createGain(),
 		currentStream,
-		mediaSource, 
-		mediaBuffer, 
-		remoteDestination, 
+		mediaSource,
+		mediaBuffer,
+		remoteDestination,
 		mediaDescription = {
 			title: null,
 			artist: null,
@@ -62,14 +65,14 @@ var Station = (function(stationName, callback) {
 
 			var peer = new RTCPeerConnection(config, optionals);
 			var receiverId = message.from;
-			
+
 			peer.addEventListener('icecandidate', function(event) {
 				var message = {
-					from: stationName, 
-					to: receiverId, 
+					from: stationName,
+					to: receiverId,
 					data: {
-						type: 'candidate', 
-						candidate: event.candidate 
+						type: 'candidate',
+						candidate: event.candidate
 					}
 				};
 
@@ -79,7 +82,7 @@ var Station = (function(stationName, callback) {
 			// Add Receiver to object of connected peers
 			var receiver = {
 				id: receiverId,
-				peerConnection: peer, 
+				peerConnection: peer,
 				stream: undefined,
 				mediaDescriptionChannel: peer.createDataChannel('mediaDescription', { reliable: true })
 			};
@@ -98,7 +101,7 @@ var Station = (function(stationName, callback) {
 
 		socket.on('logoff', function(message) {
 			//console.log(message.from + ' logged out.');
-			
+
 			delete peers[message.from];
 
 			//console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
@@ -146,7 +149,7 @@ var Station = (function(stationName, callback) {
 			new WaveformGenerator(readEvent.target.result, {drawMode: 'svg', waveformColor: '#ff6d00'}).then(function(dataUrl) {
 				currentWaveform = dataUrl;
 			}).then(function() {
-				ID3.loadTags(file.name, function() {
+				/*ID3.loadTags(file.name, function() {
 				    var tags = ID3.getAllTags(file.name);
 
 				    if (tags.artist !== undefined) {
@@ -155,7 +158,7 @@ var Station = (function(stationName, callback) {
 				    if (tags.artist !== undefined) {
 				    	mediaDescription.title = tags.title;
 				    }
-				    
+
 			    	var image = tags.picture;
 			    	if (image !== undefined) {
 				    	var base64String = "";
@@ -164,10 +167,37 @@ var Station = (function(stationName, callback) {
 						}
 						currentCover = "data:" + image.format + ";base64," + btoa(base64String);
 			    	}
-				}, { 
+				}, {
 					tags: ["artist", "title", "album", "year", "picture"],
-					dataReader: new FileAPIReader(file)
-				});
+					dataReader: new FileReader(file)
+      });*/
+        jsmediatags.read(file, {
+          onSuccess: function (response) {
+            const tags = response.tags;
+
+            if (tags.artist !== undefined) {
+				    	mediaDescription.artist = tags.artist;
+				    }
+				    if (tags.artist !== undefined) {
+				    	mediaDescription.title = tags.title;
+				    }
+
+            var image = tags.picture;
+
+			    	if (image !== undefined) {
+				    	var base64String = '';
+
+              for (var i = 0; i < image.data.length; i++) {
+                  base64String += String.fromCharCode(image.data[i]);
+              }
+
+						  currentCover = "data:" + image.format + ";base64," + btoa(base64String);
+			    	}
+          },
+          onError: function(error) {
+            console.log(':(', error.type, error.info);
+          }
+        });
 			}).then(function() {
 				context.decodeAudioData(readEvent.target.result, function(buffer) {
 					if (mediaSource) {
@@ -225,11 +255,11 @@ var Station = (function(stationName, callback) {
 			receiver.peerConnection.setLocalDescription(desc);
 
 			socket.emit('message', {
-				from: stationName, 
-				to: receiver.id, 
+				from: stationName,
+				to: receiver.id,
 				data: {
-					type: 'sdp', 
-					sdp: desc 
+					type: 'sdp',
+					sdp: desc
 				}
 			});
 		}, function(e) {
@@ -246,7 +276,7 @@ var Station = (function(stationName, callback) {
 			receiverOffer(receiver.id);
 			sendMediaDescription(receiver);
 			sendWaveform();
-		}	
+		}
 	}
 
 	// Sends media meta information over a rtc data channel to a connected listener

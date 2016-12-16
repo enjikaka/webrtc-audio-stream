@@ -7,16 +7,16 @@ var sio = require('socket.io'),
 
 // Create a node-static server instance to serve the './public' folder
 
-app.use("/", express.static(__dirname + '/app'));
+app.use("/", express.static(__dirname + '/dist'));
 
 
-// Create and configure socket.io 
+// Create and configure socket.io
 //
 var io = sio.listen(http, {log: true});
 
 var port = process.env.PORT || 8080;
 
-http.listen(port, function() { 
+http.listen(port, function() {
 	console.log('Listening on port :' + port);
 	open('http://localhost:' + port + '/station.html');
 });

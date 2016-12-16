@@ -1,7 +1,3 @@
-var $ = function(q) {
-	return document.querySelector(q);
-}
-
 var station = new Station('yolo', function(e) {
 	console.log(e);
 });

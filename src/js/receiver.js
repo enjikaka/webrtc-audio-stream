@@ -16,19 +16,18 @@ var Receiver = (function(station, callback){
 		optional: [
 			{
 				RtpDataChannels: true
-			} 
+			}
 		]
 	};
 
 	// Constructor
 	function Receiver(station, callback) {
 		socket = io.connect();
-		client;
 		peer = new RTCPeerConnection(config, optionals);
 
 		socket.on('your-id', function(id) {
 			client = id;
-			
+
 		  	// Send logon message to the host
 		  	socket.emit('logon', {
 		    	from: client,
@@ -79,7 +78,7 @@ var Receiver = (function(station, callback){
 		            sdp: desc
 		          }
 		        };
-		        
+
 		        socket.emit('message', message);
 		      }, function(error) {
 		        console.error('Failure callback from createAnswer:');
@@ -96,7 +95,8 @@ var Receiver = (function(station, callback){
 			socket.emit('logoff', {to: station, from: client});
 		});
 
-		mediaDescriptionChannel = peer.createDataChannel('mediaDescription');
+		var mediaDescriptionChannel = peer.createDataChannel('mediaDescription');
+
 		mediaDescriptionChannel.onmessage = function(event) {
 			Object.assign(mediaDescription, JSON.parse(event.data));
 		};
