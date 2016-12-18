@@ -33,6 +33,7 @@ export class Station {
         },
         onError (error) {
           console.error(':(', error.type, error.info); // eslint-disable-line
+          resolve();
         }
       });
     });
