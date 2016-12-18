@@ -1,110 +1,140 @@
-var Receiver = (function(station, callback){
-	var socket;
-	var client;
-	var peer;
-	var mediaDescription = {};
+/* eslint-env browser */
+/* globals io */
 
-	// Configuraton for peer
-	var config = {
-		'iceServers': [
-			{
-				'url': 'stun:stun.l.google.com:19302'
-			}
-		]
-	},
-	optionals = {
-		optional: [
-			{
-				RtpDataChannels: true
-			}
-		]
-	};
+export class Receiver {
+  registerSocketEvents () {
+    const { socket } = this;
 
-	// Constructor
-	function Receiver(station, callback) {
-		socket = io.connect();
-		peer = new RTCPeerConnection(config, optionals);
+    socket.on('your-id', id => {
+      this.client = id;
 
-		socket.on('your-id', function(id) {
-			client = id;
+      // Send logon message to the host
+      socket.emit('logon', {
+        from: this.client,
+        to: this.station
+      });
+    });
 
-		  	// Send logon message to the host
-		  	socket.emit('logon', {
-		    	from: client,
-		    	to: station
-		  	});
-		});
+    socket.on('image-data', data => {
+      this.mediaDescription.waveform = data.waveform;
+      this.mediaDescription.cover = data.cover;
+    });
 
-		socket.on('image-data', function(data) {
-			mediaDescription.waveform = data.waveform;
-			mediaDescription.cover = data.cover;
-		});
+    socket.on('message', message => {
+      const { peer } = this;
 
-		peer.addEventListener('icecandidate', function(event) {
-		  var data = {
-		    from: client,
-		    to: station,
-		    data: {
-		      type: 'candidate',
-		      candidate: event.candidate
-		  }};
+      // console.debug(message.data.type);
+      if (message.data.type === 'candidate') {
+        if (message.data.candidate) {
+          peer.addIceCandidate(new RTCIceCandidate(message.data.candidate));
+        }
+      } else if (message.data.type === 'sdp') {
+        // console.log('Received message: ' + JSON.stringify(message.data));
+        peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp), () => {
+          peer.createAnswer(desc => {
+            peer.setLocalDescription(desc);
 
-		  socket.emit('message', data);
-		});
+            const { client, station } = this;
 
-		peer.addEventListener('addstream', function(event) {
-			callback(event.stream);
-		});
+            const descMessage = {
+              from: client,
+              to: station,
+              data: {
+                type: 'sdp',
+                sdp: desc
+              }
+            };
 
-		socket.on('message', function(message) {
-			//console.debug(message.data.type);
-		  if (message.data.type === 'candidate') {
-		    if (message.data.candidate) {
-		      peer.addIceCandidate(new RTCIceCandidate(message.data.candidate));
-		    }
-		  } else if (message.data.type === 'sdp') {
-		  	//console.log('Received message: ' + JSON.stringify(message.data));
-		    peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp), function() {
-		      peer.createAnswer(function(desc) {
-		        peer.setLocalDescription(desc);
+            socket.emit('message', descMessage);
+          }, error => {
+            console.error('Failure callback from createAnswer:');
+            console.error(JSON.stringify(error));
+          });
+        }, error => {
+          console.error('Failure callback from setRemoteDescription:');
+          console.error(JSON.stringify(error));
+        });
+      }
+    });
+  }
 
-		        //console.debug(desc);
+  getRtcConfigAndOptions () {
+    // Configuraton for peer
+    const rtcConfig = {
+      'iceServers': [
+        {
+          'url': 'stun:stun.l.google.com:19302'
+        }
+      ]
+    };
 
-		        var message = {
-		          from: client,
-		          to: station,
-		          data: {
-		            type: 'sdp',
-		            sdp: desc
-		          }
-		        };
+    const rtcOptionals = {
+      optional: [
+        {
+          RtpDataChannels: true
+        }
+      ]
+    };
 
-		        socket.emit('message', message);
-		      }, function(error) {
-		        console.error('Failure callback from createAnswer:');
-		        console.error(JSON.stringify(error));
-		      });
-		    }, function(error) {
-		      console.error('Failure callback from setRemoteDescription:');
-		      console.error(JSON.stringify(error));
-		    });
-		  }
-		});
+    return { rtcConfig, rtcOptionals };
+  }
 
-		window.addEventListener('beforeunload', function() {
-			socket.emit('logoff', {to: station, from: client});
-		});
+  createPeer () {
+    const { rtcConfig, rtcOptionals } = this.getRtcConfigAndOptions();
+    const { socket } = this;
 
-		var mediaDescriptionChannel = peer.createDataChannel('mediaDescription');
+    this.peer = new RTCPeerConnection(rtcConfig, rtcOptionals);
 
-		mediaDescriptionChannel.onmessage = function(event) {
-			Object.assign(mediaDescription, JSON.parse(event.data));
-		};
-	}
+    this.peer.addEventListener('icecandidate', event => {
+      const { client, station } = this;
 
-	Receiver.prototype.getMediaDescription = function() {
-		return mediaDescription;
-	};
+      const data = {
+        from: client,
+        to: station,
+        data: {
+          type: 'candidate',
+          candidate: event.candidate
+        }
+      };
 
-	return Receiver;
-})();
+      socket.emit('message', data);
+    });
+
+    this.peer.addEventListener('addstream', event => {
+      this.callback({
+        streamUrl: event.stream
+      });
+    });
+
+    const mediaDescriptionChannel = this.peer.createDataChannel('mediaDescription');
+
+    mediaDescriptionChannel.onmessage = function (event) {
+      Object.assign(this.mediaDescription, JSON.parse(event.data));
+    };
+  }
+
+  constructor (station, callback) {
+    const socket = io.connect();
+    const mediaDescription = {};
+
+    window.addEventListener('beforeunload', () => {
+      const { client } = this;
+
+      socket.emit('logoff', { to: station, from: client });
+    });
+
+    Object.assign(this, {
+      station,
+      callback,
+      socket,
+      mediaDescription
+    });
+
+    this.registerSocketEvents();
+    this.createPeer();
+  }
+
+  getMediaDescription () {
+    return this.mediaDescription;
+  }
+}

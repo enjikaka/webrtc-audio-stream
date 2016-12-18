@@ -1,27 +1,31 @@
-var ReceiverChat = (function(stationName, name) {
-	var socket = io.connect();
-	var station;
-	var id;
+/* globals io */
 
-	function ReceiverChat(stationName, name) {
-		id = name;
-		station = stationName;
-	}
+export class ReceiverChat {
+  constructor (station, id) {
+    const socket = io.connect();
 
-	ReceiverChat.prototype.sendMessage = function(message) {
-		console.debug(station, id, message);
-		socket.emit('chat', {
-			station: station,
-			from: id,
-			message: message
-		});
-	};
+    Object.assign(this, {
+      id,
+      station,
+      socket
+    });
+  }
 
-	ReceiverChat.prototype.onMessage = function(messageCallback) {
-		socket.on('chat', function(data) {
-			messageCallback(data);
-		});
-	};
+  sendMessage (message) {
+    const { socket, station, id } = this;
 
-	return ReceiverChat;
-})();
+    socket.emit('chat', {
+      station,
+      from: id,
+      message
+    });
+  }
+
+  onMessage (messageCallback) {
+    const { socket } = this;
+
+    socket.on('chat', data => {
+      messageCallback(data);
+    });
+  }
+}

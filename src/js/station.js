@@ -41,7 +41,10 @@ export class Station {
   }
 
   getPeers () {
-    return Object.keys(this.peers).map(key => this.peers[key]);
+    console.debug(this.peers);
+    const peersArray = Object.keys(this.peers).map(key => this.peers[key]);
+    console.debug(peersArray);
+    return peersArray;
   }
 
   registerSocketEvents () {
