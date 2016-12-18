@@ -5,11 +5,11 @@ let start;
 
 export class Station {
   readID3 (file) {
+    const mediaDescription = this.mediaDescription;
+
     return new Promise(resolve => {
       jsmediatags.read(file, {
         onSuccess (response) {
-          const mediaDescription = {};
-
           const tags = response.tags;
 
           const { artist, title } = tags;
@@ -78,16 +78,18 @@ export class Station {
         socket.emit('message', eventMessage);
       });
 
+      const mediaDescriptionChannel = peer.createDataChannel('mediaDescription', { reliable: true });
+
       // Add Receiver to object of connected peers
       const receiver = {
         id: receiverId,
         peerConnection: peer,
         stream: undefined,
-        mediaDescriptionChannel: peer.createDataChannel('mediaDescription', { reliable: true })
+        mediaDescriptionChannel
       };
 
-      receiver.mediaDescriptionChannel.onopen = () => {
-        this.startPlayingIfPossible(this.peers[receiverId]);
+      mediaDescriptionChannel.onopen = () => {
+        this.sendMediaDescription(receiver);
       };
 
       this.peers[receiverId] = receiver;
@@ -152,6 +154,7 @@ export class Station {
       });
 
       const getID3Data = this.readID3(file).then(newMediaDesc => {
+        console.debug(newMediaDesc, this.mediaDescription, Object.assign(this.mediaDescription, newMediaDesc));
         return Object.assign(this.mediaDescription, newMediaDesc);
       });
 
@@ -235,21 +238,24 @@ export class Station {
       receiver.peerConnection.addStream(this.remoteDestination.stream);
       receiver.stream = this.remoteDestination.stream;
       this.receiverOffer(receiver.id);
-      this.sendMediaDescription(receiver);
       this.sendWaveform();
     }
   }
 
   // Sends media meta information over a rtc data channel to a connected listener
   sendMediaDescription (receiver) {
+    const { mediaDescription } = this;
     const channel = receiver.mediaDescriptionChannel;
 
-    this.mediaDescription.startTime = start;
+    console.debug('[sendMediaDescription]', mediaDescription);
+    console.debug('channelReadystate open?,', channel.readyState);
 
-    if (this.mediaDescription && channel.readyState === 'open') {
-      const data = JSON.stringify(this.mediaDescription);
+    mediaDescription.startTime = start;
 
-      channel.send(data);
+    if (mediaDescription) {
+      const data = JSON.stringify(mediaDescription);
+
+      channel.send({ data });
     }
   }
 
@@ -275,8 +281,10 @@ export class Station {
     this.remoteDestination = this.context.createMediaStreamDestination();
     this.mediaSource.connect(this.remoteDestination);
 
+    console.debug('getPeers');
+
     this.getPeers().forEach(peer => {
-      console.debug(peer);
+      console.debug('getPeers', peer);
       this.startPlayingIfPossible(peer);
     });
   }
