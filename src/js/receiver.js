@@ -13,23 +13,22 @@ export class Receiver {
         from: this.client,
         to: this.station
       });
+
+      socket.removeAllListeners('your-id');
     });
 
     socket.on('image-data', data => {
-      this.mediaDescription.waveform = data.waveform;
-      this.mediaDescription.cover = data.cover;
+      Object.assign(this.mediaDescription, data);
     });
 
     socket.on('message', message => {
       const { peer } = this;
 
-      // console.debug(message.data.type);
       if (message.data.type === 'candidate') {
         if (message.data.candidate) {
           peer.addIceCandidate(new RTCIceCandidate(message.data.candidate));
         }
       } else if (message.data.type === 'sdp') {
-        // console.log('Received message: ' + JSON.stringify(message.data));
         peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp), () => {
           peer.createAnswer(desc => {
             peer.setLocalDescription(desc);
@@ -85,7 +84,7 @@ export class Receiver {
 
     this.peer = new RTCPeerConnection(rtcConfig, rtcOptionals);
 
-    this.peer.addEventListener('icecandidate', event => {
+    this.peer.onicecandidate = event => {
       const { client, station } = this;
 
       const data = {
@@ -98,21 +97,13 @@ export class Receiver {
       };
 
       socket.emit('message', data);
-    });
-
-    this.peer.ondatachannel = event => {
-      console.debug(event);
-
-      event.channel.onmessage = mediaDscEvent => {
-        Object.assign(this.mediaDescription, JSON.parse(mediaDscEvent.data));
-      };
     };
 
-    this.peer.addEventListener('addstream', event => {
+    this.peer.onaddstream = event => {
       this.callback({
         streamUrl: event.stream
       });
-    });
+    };
   }
 
   constructor (station, callback) {
@@ -132,8 +123,8 @@ export class Receiver {
       mediaDescription
     });
 
-    this.registerSocketEvents();
     this.createPeer();
+    this.registerSocketEvents();
   }
 
   getMediaDescription () {

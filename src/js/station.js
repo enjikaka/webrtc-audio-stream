@@ -1,8 +1,6 @@
 /* globals jsmediatags, io, WaveformGenerator */
 /* eslint-env browser */
 
-let start;
-
 export class Station {
   readID3 (file) {
     const mediaDescription = this.mediaDescription;
@@ -34,41 +32,53 @@ export class Station {
           resolve(mediaDescription);
         },
         onError (error) {
-          console.log(':(', error.type, error.info);
+          console.error(':(', error.type, error.info); // eslint-disable-line
         }
       });
     });
   }
 
+  addPeer (id, peer) {
+    this.peers[id] = peer;
+  }
+
+  removePeer (id) {
+    if (this.peers[id]) {
+      delete this.peers[id];
+    }
+  }
+
   getPeers () {
-    console.debug(this.peers);
-    const peersArray = Object.keys(this.peers).map(key => this.peers[key]);
-    console.debug(peersArray);
-    return peersArray;
+    return Object.keys(this.peers).map(key => this.peers[key]);
   }
 
   registerSocketEvents () {
     const { socket } = this;
 
     socket.on('your-id', stationId => {
-      if (!this.stationName) {
-        this.stationName = stationId;
-      }
+      this.stationName = stationId;
+
+      this.callback({
+        name: stationId,
+        listenUrl: window.location.protocol + '//' + window.location.host + '/receiver.html?id=' + stationId
+      });
 
       socket.emit('set-room-name', {
-        name: this.stationName
+        name: stationId
       });
+
+      socket.removeAllListeners('your-id');
     });
 
     socket.on('disconnected', receiverId => {
-      this.peers[receiverId] = undefined;
+      this.removePeer(receiverId);
     });
 
     socket.on('logon', message => {
       const peer = new RTCPeerConnection(this.rtcConfig, this.rtcOptionals);
       const receiverId = message.from;
 
-      peer.addEventListener('icecandidate', event => {
+      peer.onicecandidate = event => {
         const eventMessage = {
           from: this.stationName,
           to: receiverId,
@@ -79,31 +89,24 @@ export class Station {
         };
 
         socket.emit('message', eventMessage);
-      });
-
-      const mediaDescriptionChannel = peer.createDataChannel('mediaDescription');
+      };
 
       // Add Receiver to object of connected peers
       const receiver = {
         id: receiverId,
         peerConnection: peer,
-        stream: undefined,
-        mediaDescriptionChannel
+        stream: undefined
       };
 
-      this.peers[receiverId] = receiver;
+      this.addPeer(receiverId, receiver);
       this.receiverOffer(receiverId);
 
-      console.log(receiverId + ' logged on.');
-      console.log('Now broadcasting to ' + Object.keys(this.peers).length + ' listeners.');
+      // console.log(receiverId + ' logged on.');
+      // console.log('Now broadcasting to ' + Object.keys(this.peers).length + ' listeners.');
     });
 
     socket.on('logoff', message => {
-      console.log(message.from + ' logged out.');
-
       delete this.peers[message.from];
-
-      console.log('Now broadcasting to ' + Object.keys(this.peers).length + ' listeners.');
     });
 
     // when a message is received from a listener we'll update the rtc session accordingly
@@ -122,7 +125,6 @@ export class Station {
   }
 
   playAudioFile (file) {
-    console.debug('[playAudioFile]', file);
     const songMeta = this.getInfoFromFileName(file.name);
 
     window.durationHolder = document.createElement('audio');
@@ -144,7 +146,6 @@ export class Station {
     const reader = new FileReader();
 
     reader.onload = readEvent => {
-      console.debug('[fileReader:onload]');
       const waveformOptions = { drawMode: 'svg', waveformColor: '#ff6d00' };
 
       const generateWaveform = new WaveformGenerator(readEvent.target.result, waveformOptions).then(dataUrl => {
@@ -152,20 +153,20 @@ export class Station {
       });
 
       const getID3Data = this.readID3(file).then(newMediaDesc => {
-        console.debug(newMediaDesc, this.mediaDescription, Object.assign(this.mediaDescription, newMediaDesc));
+        // console.debug(newMediaDesc, this.mediaDescription, Object.assign(this.mediaDescription, newMediaDesc));
         return Object.assign(this.mediaDescription, newMediaDesc);
       });
 
       Promise.all([generateWaveform, getID3Data]).then(() => {
         this.context.decodeAudioData(readEvent.target.result, buffer => {
-          console.debug('[decodeAudioData]');
+          // console.debug('[decodeAudioData]');
           if (this.mediaSource) {
             this.mediaSource.stop(0);
           }
 
           this.mediaBuffer = buffer;
           this.playStream();
-          start = Date.now();
+          this.mediaDescription.startTime = Date.now();
         });
       });
     };
@@ -184,7 +185,7 @@ export class Station {
     const offset = this.audioState.stopTime - this.audioState.startTime;
 
     this.playStream(offset);
-    start = Date.now() - offset;
+    this.mediaDescription.startTime = Date.now() - offset;
     this.audioState.playing = true;
   }
 
@@ -224,67 +225,42 @@ export class Station {
         }
       });
     }, e => {
-      console.error(e);
+      console.error(e); // eslint-disable-line
     });
   }
 
   // checks if media is present and starts streaming media to a connected listener if possible
   startPlayingIfPossible (receiver) {
-    console.debug('[startPlayingIfPossible]', receiver);
+    // console.debug('[startPlayingIfPossible]', receiver);
 
     if (this.mediaSource && this.remoteDestination) {
       receiver.peerConnection.addStream(this.remoteDestination.stream);
       receiver.stream = this.remoteDestination.stream;
       this.receiverOffer(receiver.id);
-      this.sendMediaDescription(receiver);
-      this.sendWaveform();
+      this.sendMediaDescription();
     }
   }
 
-  // Sends media meta information over a rtc data channel to a connected listener
-  sendMediaDescription (receiver) {
-    const { mediaDescription } = this;
-    const channel = receiver.mediaDescriptionChannel;
-
-    mediaDescription.startTime = start;
-
-    const jsonString = JSON.stringify(mediaDescription);
-
-    if (channel.readyState === 'open') {
-      channel.send(jsonString);
-    } else {
-      channel.onopen = function () {
-        channel.send(jsonString);
-      };
-    }
-  }
-
-  sendWaveform () {
+  sendMediaDescription () {
     this.getPeers().forEach(peer => {
-      const { cover, waveform } = this.mediaDescription;
-      const to = peer.id;
+      const data = Object.assign({ to: peer.id }, this.mediaDescription);
 
-      this.socket.emit('image-data', { to, waveform, cover });
+      this.socket.emit('image-data', data);
     });
   }
 
   playStream () {
-    console.debug('[playStream]');
-
     this.mediaSource = this.context.createBufferSource();
     this.mediaSource.buffer = this.mediaBuffer;
     this.mediaSource.start(0);
-    start = Date.now();
+    this.mediaDescription.starttime = Date.now();
     // mediaSource.connect(gainNode);
 
     // setup remote stream
     this.remoteDestination = this.context.createMediaStreamDestination();
     this.mediaSource.connect(this.remoteDestination);
 
-    console.debug('getPeers');
-
     this.getPeers().forEach(peer => {
-      console.debug('getPeers', peer);
       this.startPlayingIfPossible(peer);
     });
   }
@@ -365,6 +341,7 @@ export class Station {
     // Configuration for audio
     const context = new AudioContext();
     const gainNode = context.createGain();
+
     gainNode.connect(context.destination);
 
     const socket = io.connect();
@@ -372,7 +349,6 @@ export class Station {
     Object.assign(this, {
       rtcConfig,
       rtcOptionals,
-      stationName,
       mediaDescription,
       peers,
       audioState,
@@ -380,14 +356,10 @@ export class Station {
       mediaBuffer,
       remoteDestination,
       context,
-      socket
+      socket,
+      callback
     });
 
     this.registerSocketEvents();
-
-    callback({
-      name: stationName,
-      listenURL: window.location.protocol + '//' + window.location.host + '/receiver.html?id=' + stationName
-    });
   }
 }

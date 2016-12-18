@@ -7,10 +7,9 @@ let chat;
 let currentTime;
 
 function getStation () {
-  const hash = document.location.hash;
-  const station = hash.split('#!/')[1];
+  const params = new URLSearchParams(document.location.search);
 
-  return station || null;
+  return params.get('id');
 }
 
 function renderMetadata (metadata) {
@@ -29,7 +28,8 @@ function renderMetadata (metadata) {
 
     bg.style.backgroundImage = 'url("' + metadata.cover + '")';
   }
-	// $('#station-name').innerHTML = 'Station: ' + getStation();
+
+  $('#station-name').innerHTML = 'Station: ' + getStation();
 }
 
 function registerChatHandler () {
