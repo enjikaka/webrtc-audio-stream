@@ -4,19 +4,19 @@ const concat = require('gulp-concat');
 const autoprefixer = require('gulp-autoprefixer');
 const closureCompiler = require('google-closure-compiler-js').gulp();
 
-gulp.task('html', function() {
-	gulp.src('src/*.html')
+gulp.task('html', () => {
+  gulp.src('src/*.html')
       .pipe(gulp.dest('dist'));
 });
 
-gulp.task('sass', function() {
-	gulp.src('src/css/*.scss')
+gulp.task('sass', () => {
+  gulp.src('src/css/*.scss')
       .pipe(sass())
       .pipe(autoprefixer())
       .pipe(gulp.dest('dist/css'));
 });
 
-gulp.task('script', function() {
+gulp.task('script', () => {
   const defaultCloseCompilerOptions = {
     compilationLevel: 'SIMPLE',
     warningLevel: 'VERBOSE',
@@ -33,8 +33,7 @@ gulp.task('script', function() {
         src: 'var jsmediatags = {};'
       }
     ]
-  }
-
+  };
 
   const closureCompilerOptionsStation = Object.assign(
     {},
@@ -55,7 +54,7 @@ gulp.task('script', function() {
     'src/js/fake-jquery.js',
     'src/js/WaveformGenerator.js',
     'src/js/station.js',
-    'src/js/station-ui.js',
+    'src/js/station-ui.js'
   ])
   .pipe(concat('station.concat.js'))
   .pipe(closureCompiler(closureCompilerOptionsStation))
@@ -65,20 +64,15 @@ gulp.task('script', function() {
     'src/js/fake-jquery.js',
     'src/js/receiver.js',
     'src/js/receiver-chat.js',
-    'src/js/receiver-ui.js',
+    'src/js/receiver-ui.js'
   ])
   .pipe(concat('receiver.concat.js'))
   .pipe(closureCompiler(closureCompilerOptionsReceiver))
   .pipe(gulp.dest('./dist'));
 });
 
-gulp.task('sass:watch', function() {
-	gulp.watch('app/css/*.scss', ['sass']);
-});
-
-gulp.task('script:watch', function() {
-	gulp.watch('src/js/*.js', ['script']);
-});
+gulp.task('sass:watch', () => gulp.watch('app/css/*.scss', ['sass']));
+gulp.task('script:watch', () => gulp.watch('src/js/*.js', ['script']));
 
 gulp.task('watch', ['script:watch', 'sass:watch']);
 

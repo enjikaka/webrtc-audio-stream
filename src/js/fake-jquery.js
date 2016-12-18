@@ -1,7 +1,11 @@
-var $ = function(q) {
-	return document.querySelector(q);
+/* eslint-env browser */
+
+const $ = q => {
+  return document.querySelector(q);
 };
 
-var $$ = function(q) {
+const $$ = q => {
   return document.querySelectorAll(q);
 };
+
+export default { $, $$ };
