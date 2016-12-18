@@ -81,7 +81,7 @@ export class Station {
         socket.emit('message', eventMessage);
       });
 
-      const mediaDescriptionChannel = peer.createDataChannel('mediaDescription', { reliable: true });
+      const mediaDescriptionChannel = peer.createDataChannel('mediaDescription');
 
       // Add Receiver to object of connected peers
       const receiver = {
@@ -91,24 +91,19 @@ export class Station {
         mediaDescriptionChannel
       };
 
-      mediaDescriptionChannel.onopen = () => {
-        this.sendMediaDescription(receiver);
-      };
-
       this.peers[receiverId] = receiver;
-
       this.receiverOffer(receiverId);
 
-      // console.log(receiverId + ' logged on.');
-      // console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
+      console.log(receiverId + ' logged on.');
+      console.log('Now broadcasting to ' + Object.keys(this.peers).length + ' listeners.');
     });
 
     socket.on('logoff', message => {
-      // console.log(message.from + ' logged out.');
+      console.log(message.from + ' logged out.');
 
       delete this.peers[message.from];
 
-      // console.log('Now broadcasting to ' + Object.keys(peers).length + ' listeners.');
+      console.log('Now broadcasting to ' + Object.keys(this.peers).length + ' listeners.');
     });
 
     // when a message is received from a listener we'll update the rtc session accordingly
@@ -241,6 +236,7 @@ export class Station {
       receiver.peerConnection.addStream(this.remoteDestination.stream);
       receiver.stream = this.remoteDestination.stream;
       this.receiverOffer(receiver.id);
+      this.sendMediaDescription(receiver);
       this.sendWaveform();
     }
   }
@@ -250,15 +246,16 @@ export class Station {
     const { mediaDescription } = this;
     const channel = receiver.mediaDescriptionChannel;
 
-    console.debug('[sendMediaDescription]', mediaDescription);
-    console.debug('channelReadystate open?,', channel.readyState);
-
     mediaDescription.startTime = start;
 
-    if (mediaDescription) {
-      const data = JSON.stringify(mediaDescription);
+    const jsonString = JSON.stringify(mediaDescription);
 
-      channel.send({ data });
+    if (channel.readyState === 'open') {
+      channel.send(jsonString);
+    } else {
+      channel.onopen = function () {
+        channel.send(jsonString);
+      };
     }
   }
 

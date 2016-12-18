@@ -100,17 +100,19 @@ export class Receiver {
       socket.emit('message', data);
     });
 
+    this.peer.ondatachannel = event => {
+      console.debug(event);
+
+      event.channel.onmessage = mediaDscEvent => {
+        Object.assign(this.mediaDescription, JSON.parse(mediaDscEvent.data));
+      };
+    };
+
     this.peer.addEventListener('addstream', event => {
       this.callback({
         streamUrl: event.stream
       });
     });
-
-    const mediaDescriptionChannel = this.peer.createDataChannel('mediaDescription');
-
-    mediaDescriptionChannel.onmessage = function (event) {
-      Object.assign(this.mediaDescription, JSON.parse(event.data));
-    };
   }
 
   constructor (station, callback) {
