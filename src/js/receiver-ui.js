@@ -29,7 +29,7 @@ function renderMetadata (metadata) {
     bg.style.backgroundImage = 'url("' + metadata.cover + '")';
   }
 
-  $('#station-name').innerHTML = 'Station: ' + getStation();
+  // $('#station-name').innerHTML = 'Station: ' + getStation();
 }
 
 function registerChatHandler () {
