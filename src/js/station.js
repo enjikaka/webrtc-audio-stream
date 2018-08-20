@@ -149,7 +149,7 @@ export class Station {
     reader.onload = readEvent => {
       const waveformOptions = { drawMode: 'svg', waveformColor: '#ff6d00' };
 
-      const generateWaveform = new WaveformGenerator(readEvent.target.result, waveformOptions).then(dataUrl => {
+      const generateWaveform = new WaveformGenerator(readEvent.target.result.slice(0), waveformOptions).then(dataUrl => {
         this.mediaDescription.waveform = dataUrl;
       });
 
@@ -159,13 +159,13 @@ export class Station {
       });
 
       Promise.all([generateWaveform, getID3Data]).then(() => {
-        this.context.decodeAudioData(readEvent.target.result, buffer => {
+        this.context.decodeAudioData(readEvent.target.result.slice(0), audioBuffer => {
           // console.debug('[decodeAudioData]');
           if (this.mediaSource) {
             this.mediaSource.stop(0);
           }
 
-          this.mediaBuffer = buffer;
+          this.mediaBuffer = audioBuffer;
           this.playStream();
           this.mediaDescription.startTime = Date.now();
         });
