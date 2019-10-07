@@ -1,7 +1,33 @@
 /* eslint-env browser */
 /* globals io */
 
-export class Receiver {
+export default class Receiver {
+  constructor (station) {
+    const socket = io.connect();
+
+    window.addEventListener('beforeunload', () => {
+      const { client } = this;
+
+      socket.emit('logoff', { to: station, from: client });
+    });
+
+    this._mediaDescription = {};
+
+    this.station = station;
+    this.socket = socket;
+
+    this.createPeer();
+    this.registerSocketEvents();
+  }
+
+  set mediaDescription (data) {
+    this._mediaDescription = data;
+  }
+
+  get stream () {
+    return this.streams[0];
+  }
+
   registerSocketEvents () {
     const { socket } = this;
 
@@ -18,7 +44,7 @@ export class Receiver {
     });
 
     socket.on('image-data', data => {
-      Object.assign(this.mediaDescription, data);
+      this.mediaDescription = data;
     });
 
     socket.on('message', message => {
@@ -57,32 +83,16 @@ export class Receiver {
     });
   }
 
-  getRtcConfigAndOptions () {
-    // Configuraton for peer
-    const rtcConfig = {
-      'iceServers': [
-        {
-          'url': 'stun:stun.l.google.com:19302'
-        }
-      ]
-    };
-
-    const rtcOptionals = {
-      optional: [
-        {
-          RtpDataChannels: true
-        }
-      ]
-    };
-
-    return { rtcConfig, rtcOptionals };
-  }
-
   createPeer () {
-    const { rtcConfig, rtcOptionals } = this.getRtcConfigAndOptions();
     const { socket } = this;
 
-    this.peer = new RTCPeerConnection(rtcConfig, rtcOptionals);
+    this.peer = new RTCPeerConnection({
+      iceServers: [
+        {
+          urls: 'stun:stun.l.google.com:19302'
+        }
+      ]
+    });
 
     this.peer.onicecandidate = event => {
       const { client, station } = this;
@@ -99,35 +109,14 @@ export class Receiver {
       socket.emit('message', data);
     };
 
-    this.peer.onaddstream = event => {
-      this.callback({
-        streamUrl: event.stream
-      });
-    };
+    this.peer.addEventListener('track', event => {
+      this.streams = event.streams;
+
+      document.dispatchEvent(new CustomEvent('receiver:new-song'));
+    });
   }
 
-  constructor (station, callback) {
-    const socket = io.connect();
-    const mediaDescription = {};
-
-    window.addEventListener('beforeunload', () => {
-      const { client } = this;
-
-      socket.emit('logoff', { to: station, from: client });
-    });
-
-    Object.assign(this, {
-      station,
-      callback,
-      socket,
-      mediaDescription
-    });
-
-    this.createPeer();
-    this.registerSocketEvents();
-  }
-
-  getMediaDescription () {
-    return this.mediaDescription;
+  get mediaDescription () {
+    return this._mediaDescription;
   }
 }

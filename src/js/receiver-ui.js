@@ -1,10 +1,13 @@
 /* eslint-env browser */
-/* globals $, $$, Receiver, ReceiverChat */
+
+import Receiver from './receiver.js';
+import ReceiverChat from './receiver-chat.js';
+import { $, $$ } from './fake-jquery.js';
+
+import 'https://unpkg.com/audio-visualiser?module';
 
 let receiver;
-let duration;
 let chat;
-let currentTime;
 
 function getStation () {
   const params = new URLSearchParams(document.location.search);
@@ -13,13 +16,12 @@ function getStation () {
 }
 
 function renderMetadata (metadata) {
-  duration = metadata.duration;
-  currentTime = metadata.currentTime;
-
   $('#title').innerHTML = metadata.title;
   $('#artist').innerHTML = metadata.artist;
-  $('#waveform').src = metadata.waveform;
-  $('#cover').src = metadata.cover;
+
+  if (metadata.cover) {
+    $('#cover').src = metadata.cover;
+  }
 
   const backgrounds = $$('.background');
 
@@ -38,29 +40,44 @@ function registerChatHandler () {
   });
 }
 
-function timeUpdate () {
-  (function animloop () {
-    requestAnimationFrame(animloop);
-    // var currentTime = (Math.abs(receiver.getMediaDescription().startTime - Date.now()) / 1000);
-    currentTime = (Math.abs(receiver.getMediaDescription().startTime - Date.now()) / 1000) - $('audio').currentTime;
-    $('#playbar').style.transform = 'translateX(' + (currentTime / duration) * 100 + '%)';
-  })();
-}
-
 window.onload = function () {
   const station = getStation();
 
+  const audioElement = $('audio');
+  const audioVisualiser = $('audio-visualiser');
+
+  const audioContext = new AudioContext();
+  const analyser = audioContext.createAnalyser();
+
+  analyser.fftSize = 1024;
+
+  audioVisualiser.analyser = analyser;
+
   if (station) {
-    receiver = new Receiver(station, data => {
-      const { streamUrl } = data;
+    receiver = new Receiver(station);
 
-      document.querySelector('audio').src = URL.createObjectURL(streamUrl);
+    document.addEventListener('receiver:new-song', event => {
+      if (event instanceof CustomEvent) {
+        const { stream, mediaDescription } = receiver;
 
-      renderMetadata(receiver.getMediaDescription());
-      timeUpdate();
+        audioElement.srcObject = stream;
+
+        const source = audioContext.createMediaStreamSource(stream);
+
+        source.connect(analyser);
+
+        const dest = audioContext.createMediaStreamDestination();
+
+        analyser.connect(dest);
+
+        renderMetadata(mediaDescription);
+
+        audioVisualiser.start();
+      }
     });
 
-    console.debug('Creating chat instance for station ' + station);
+    audioElement.addEventListener('play', () => audioVisualiser.start());
+    audioElement.addEventListener('pause', () => audioVisualiser.stop());
 
     chat = new ReceiverChat(station, 'Jeremy');
 
@@ -82,8 +99,6 @@ window.onload = function () {
       paragraph.innerHTML = data.message;
       message.appendChild(paragraph);
       $('#messages').appendChild(message);
-
-      console.log(data);
     });
   } else {
     console.error('No station entered');

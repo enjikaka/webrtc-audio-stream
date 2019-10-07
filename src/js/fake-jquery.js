@@ -1,11 +1,9 @@
 /* eslint-env browser */
 
-const $ = q => {
+export const $ = q => {
   return document.querySelector(q);
 };
 
-const $$ = q => {
+export const $$ = q => {
   return document.querySelectorAll(q);
 };
-
-export default { $, $$ };

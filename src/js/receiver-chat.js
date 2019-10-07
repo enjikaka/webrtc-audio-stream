@@ -1,6 +1,6 @@
 /* globals io */
 
-export class ReceiverChat {
+export default class ReceiverChat {
   constructor (station, id) {
     const socket = io.connect();
 

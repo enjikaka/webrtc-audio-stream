@@ -1,7 +1,7 @@
 /* globals jsmediatags, io, WaveformGenerator */
 /* eslint-env browser */
 
-export class Station {
+export default class Station {
   readID3 (file) {
     const mediaDescription = this.mediaDescription;
 
@@ -154,7 +154,14 @@ export class Station {
       });
 
       const getID3Data = this.readID3(file).then(newMediaDesc => {
-        // console.debug(newMediaDesc, this.mediaDescription, Object.assign(this.mediaDescription, newMediaDesc));
+        if (!newMediaDesc.title) {
+          newMediaDesc.title = file.name.indexOf('-') !== -1 ? file.name.split('-')[0] : 'Unkown';
+        }
+
+        if (!newMediaDesc.artist) {
+          newMediaDesc.artist = file.name.indexOf('-') !== -1 ? file.name.split('-')[1].split('.')[0] : 'Unkown';
+        }
+
         return Object.assign(this.mediaDescription, newMediaDesc);
       });
 
@@ -190,13 +197,17 @@ export class Station {
     this.audioState.playing = true;
   }
 
-  getMediaDescription () {
-    return this.mediaDescription;
+  set mediaDescription (data) {
+    this._mediaDescription = data;
+  }
+
+  get mediaDescription () {
+    return this._mediaDescription;
   }
 
   getInfoFromFileName (name) {
     name = name === null ? 'Unkown' : name;
-    name = name.replace(/_/g, ' ');
+    name = name.indexOf('_') !== -1 ? name.replace(/_/g, ' ') : name;
 
     let artist = 'Unkown';
 
@@ -232,8 +243,6 @@ export class Station {
 
   // checks if media is present and starts streaming media to a connected listener if possible
   startPlayingIfPossible (receiver) {
-    // console.debug('[startPlayingIfPossible]', receiver);
-
     if (this.mediaSource && this.remoteDestination) {
       receiver.peerConnection.addStream(this.remoteDestination.stream);
       receiver.stream = this.remoteDestination.stream;
@@ -244,6 +253,8 @@ export class Station {
 
   sendMediaDescription () {
     this.getPeers().forEach(peer => {
+      console.log(this.mediaDescription);
+
       const data = Object.assign({ to: peer.id }, this.mediaDescription);
 
       this.socket.emit('image-data', data);
@@ -253,6 +264,7 @@ export class Station {
   playStream () {
     this.mediaSource = this.context.createBufferSource();
     this.mediaSource.buffer = this.mediaBuffer;
+    // this.mediaSource.playbackRate.value = 1.3;
     this.mediaSource.start(0);
     this.mediaDescription.starttime = Date.now();
     // mediaSource.connect(gainNode);

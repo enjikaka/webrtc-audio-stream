@@ -7,6 +7,13 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:400,300,600">
   <link rel="stylesheet" href="css/receiver.css">
   <script src="/socket.io/socket.io.js"></script>
+  <style>
+  audio-visualiser {
+    display: block;
+    width: 100%;
+    height: 100px;
+  }
+  </style>
 </head>
 <body>
   <div class="site">
@@ -22,10 +29,7 @@
               <span id="title"></span>
               <span id="artist"></span>
             </div>
-            <div id="waveform-wrapper">
-              <span id="playbar"></span>
-              <img id="waveform">
-            </div>
+            <audio-visualiser color="#fff"></audio-visualiser>
           </main>
         </div>
       </div>
@@ -42,7 +46,7 @@
     </div>
     <audio autoplay></audio>
   </div>
-  <script src="adapter.js"></script>
-  <script src="receiver.min.js"></script>
+  <script src="js/adapter.js"></script>
+  <script src="js/receiver-ui.js" type="module"></script>
 </body>
 </html>

@@ -16,7 +16,6 @@
   ],
   "dependencies": {
     "express": "^4.13.3",
-    "gulp-concat": "^2.6.1",
     "node-static": ">= 0.7.x",
     "node-uuid": ">= 1.4.x",
     "open": "0.0.5",
@@ -25,10 +24,6 @@
   "license": "BSD-3-Clause",
   "devDependencies": {
     "eslint": "^3.12.2",
-    "eslint-config-tidal": "^1.1.0",
-    "google-closure-compiler-js": "^20161201.0.0",
-    "gulp": "^3.9.0",
-    "gulp-autoprefixer": "^3.0.2",
-    "gulp-sass": "^2.0.4"
+    "eslint-config-tidal": "^1.1.0"
   }
 }

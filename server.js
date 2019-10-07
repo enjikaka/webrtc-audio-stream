@@ -7,7 +7,7 @@ var sio = require('socket.io'),
 
 // Create a node-static server instance to serve the './public' folder
 
-app.use("/", express.static(__dirname + '/dist'));
+app.use("/", express.static(__dirname + '/src'));
 
 
 // Create and configure socket.io
