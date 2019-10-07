@@ -1,11 +1,85 @@
-/* globals jsmediatags, io, WaveformGenerator */
+/* globals jsmediatags, io */
 /* eslint-env browser */
 
+function readAsArrayBuffer (file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+
+    reader.onload = event => {
+      resolve(event.target.result);
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 export default class Station {
+  constructor (stationName, callback) {
+    // Configuraton for peer
+    const rtcConfig = {
+      iceServers: [
+        {
+          urls: 'stun:stun.l.google.com:19302'
+        }
+      ]
+    };
+
+    const rtcOptionals = {
+      optional: [
+        {
+          RtpDataChannels: true
+        }
+      ]
+    };
+
+    const mediaDescription = {
+      title: null,
+      artist: null,
+      cover: null,
+      album: null,
+      waveform: null
+    };
+
+    const peers = {};
+
+    const audioState = {
+      stopTime: undefined,
+      startTime: undefined,
+      muted: false
+    };
+
+    let mediaSource;
+    let mediaBuffer;
+    let remoteDestination;
+
+    // Configuration for audio
+    const context = new AudioContext();
+    const gainNode = context.createGain();
+
+    gainNode.connect(context.destination);
+
+    const socket = io.connect();
+
+    this.rtcConfig = rtcConfig;
+    this.rtcOptionals = rtcOptionals;
+    this.mediaDescription = mediaDescription;
+    this.peers = peers;
+    this.audioState = audioState;
+    this.mediaSource = mediaSource;
+    this.mediaBuffer = mediaBuffer;
+    this.remoteDestination = remoteDestination;
+    this.context = context;
+    this.socket = socket;
+    this.callback = callback;
+
+    this.registerSocketEvents();
+  }
+
   readID3 (file) {
     const mediaDescription = this.mediaDescription;
 
     return new Promise(resolve => {
+      // @ts-ignore
       jsmediatags.read(file, {
         onSuccess (response) {
           const tags = response.tags;
@@ -76,7 +150,7 @@ export default class Station {
     });
 
     socket.on('logon', message => {
-      const peer = new RTCPeerConnection(this.rtcConfig, this.rtcOptionals);
+      const peer = new RTCPeerConnection(this.rtcConfig);
       const receiverId = message.from;
 
       peer.onicecandidate = event => {
@@ -125,61 +199,43 @@ export default class Station {
     });
   }
 
-  playAudioFile (file) {
+  async playAudioFile (file) {
     const songMeta = this.getInfoFromFileName(file.name);
-
-    window.durationHolder = document.createElement('audio');
 
     this.mediaDescription = {
       title: songMeta.title,
       artist: songMeta.artist,
-      waveform: null,
       cover: null,
       duration: null,
       startTime: null
     };
 
-    window.durationHolder.src = URL.createObjectURL(file);
-    window.durationHolder.oncanplaythrough = e => {
-      this.mediaDescription.duration = e.target.duration;
-    };
+    const newMetadata = await this.readID3(file).then(metadata => {
+      if (!metadata.title) {
+        metadata.title = file.name.indexOf('-') !== -1 ? file.name.split('-')[0] : 'Unkown';
+      }
 
-    const reader = new FileReader();
+      if (!metadata.artist) {
+        metadata.artist = file.name.indexOf('-') !== -1 ? file.name.split('-')[1].split('.')[0] : 'Unkown';
+      }
 
-    reader.onload = readEvent => {
-      const waveformOptions = { drawMode: 'svg', waveformColor: '#ff6d00' };
+      return metadata;
+    });
 
-      const generateWaveform = new WaveformGenerator(readEvent.target.result.slice(0), waveformOptions).then(dataUrl => {
-        this.mediaDescription.waveform = dataUrl;
-      });
+    Object.assign(this.mediaDescription, newMetadata);
 
-      const getID3Data = this.readID3(file).then(newMediaDesc => {
-        if (!newMediaDesc.title) {
-          newMediaDesc.title = file.name.indexOf('-') !== -1 ? file.name.split('-')[0] : 'Unkown';
-        }
+    const arrayBuffer = await readAsArrayBuffer(file);
 
-        if (!newMediaDesc.artist) {
-          newMediaDesc.artist = file.name.indexOf('-') !== -1 ? file.name.split('-')[1].split('.')[0] : 'Unkown';
-        }
+    this.context.decodeAudioData(arrayBuffer, audioBuffer => {
+      // console.debug('[decodeAudioData]');
+      if (this.mediaSource) {
+        this.mediaSource.stop(0);
+      }
 
-        return Object.assign(this.mediaDescription, newMediaDesc);
-      });
-
-      Promise.all([generateWaveform, getID3Data]).then(() => {
-        this.context.decodeAudioData(readEvent.target.result.slice(0), audioBuffer => {
-          // console.debug('[decodeAudioData]');
-          if (this.mediaSource) {
-            this.mediaSource.stop(0);
-          }
-
-          this.mediaBuffer = audioBuffer;
-          this.playStream();
-          this.mediaDescription.startTime = Date.now();
-        });
-      });
-    };
-
-    reader.readAsArrayBuffer(file);
+      this.mediaBuffer = audioBuffer;
+      this.playStream();
+      this.mediaDescription.startTime = Date.now();
+    });
   }
 
   stop () {
@@ -273,6 +329,11 @@ export default class Station {
     this.remoteDestination = this.context.createMediaStreamDestination();
     this.mediaSource.connect(this.remoteDestination);
 
+    this.remoteDestination.stream.getAudioTracks()[0].applyConstraints({ noiseSuppression: [true] });
+
+    console.log(this.remoteDestination.stream.getAudioTracks()[0].getCapabilities());
+    console.log(this.remoteDestination.stream.getAudioTracks()[0].getConstraints());
+
     this.getPeers().forEach(peer => {
       this.startPlayingIfPossible(peer);
     });
@@ -312,67 +373,4 @@ export default class Station {
     }
   }
   */
-
-  constructor (stationName, callback) {
-    // Configuraton for peer
-    const rtcConfig = {
-      'iceServers': [
-        {
-          'url': 'stun:stun.l.google.com:19302'
-        }
-      ]
-    };
-
-    const rtcOptionals = {
-      optional: [
-        {
-          RtpDataChannels: true
-        }
-      ]
-    };
-
-    const mediaDescription = {
-      title: null,
-      artist: null,
-      cover: null,
-      album: null,
-      waveform: null
-    };
-
-    const peers = {};
-
-    const audioState = {
-      stopTime: undefined,
-      startTime: undefined,
-      muted: false
-    };
-
-    let mediaSource;
-    let mediaBuffer;
-    let remoteDestination;
-
-    // Configuration for audio
-    const context = new AudioContext();
-    const gainNode = context.createGain();
-
-    gainNode.connect(context.destination);
-
-    const socket = io.connect();
-
-    Object.assign(this, {
-      rtcConfig,
-      rtcOptionals,
-      mediaDescription,
-      peers,
-      audioState,
-      mediaSource,
-      mediaBuffer,
-      remoteDestination,
-      context,
-      socket,
-      callback
-    });
-
-    this.registerSocketEvents();
-  }
 }
