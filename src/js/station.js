@@ -72,8 +72,7 @@ export default class Station {
       title: null,
       artist: null,
       cover: null,
-      album: null,
-      waveform: null
+      album: null
     };
 
     const peers = {};
