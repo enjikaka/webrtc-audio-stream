@@ -47,38 +47,30 @@ export default class Receiver {
       this.mediaDescription = data;
     });
 
-    socket.on('message', message => {
+    socket.on('message', async (message) => {
       const { peer } = this;
 
       if (message.data.type === 'candidate') {
         if (message.data.candidate) {
-          peer.addIceCandidate(new RTCIceCandidate(message.data.candidate));
+          await peer.addIceCandidate(new RTCIceCandidate(message.data.candidate));
         }
       } else if (message.data.type === 'sdp') {
-        peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp), () => {
-          peer.createAnswer(desc => {
-            peer.setLocalDescription(desc);
+        const { client, station } = this;
 
-            const { client, station } = this;
+        await peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp));
+        const desc = await peer.createAnswer();
+        peer.setLocalDescription(desc);
 
-            const descMessage = {
-              from: client,
-              to: station,
-              data: {
-                type: 'sdp',
-                sdp: desc
-              }
-            };
+        const descMessage = {
+          from: client,
+          to: station,
+          data: {
+            type: 'sdp',
+            sdp: desc
+          }
+        };
 
-            socket.emit('message', descMessage);
-          }, error => {
-            console.error('Failure callback from createAnswer:');
-            console.error(JSON.stringify(error));
-          });
-        }, error => {
-          console.error('Failure callback from setRemoteDescription:');
-          console.error(JSON.stringify(error));
-        });
+        socket.emit('message', descMessage);
       }
     });
   }
