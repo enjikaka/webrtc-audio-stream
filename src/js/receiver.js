@@ -3,6 +3,7 @@
 
 export default class Receiver {
   constructor (station) {
+    // @ts-ignore
     const socket = io.connect();
 
     window.addEventListener('beforeunload', () => {
@@ -47,7 +48,7 @@ export default class Receiver {
       this.mediaDescription = data;
     });
 
-    socket.on('message', async (message) => {
+    socket.on('message', async message => {
       const { peer } = this;
 
       if (message.data.type === 'candidate') {
@@ -59,6 +60,7 @@ export default class Receiver {
 
         await peer.setRemoteDescription(new RTCSessionDescription(message.data.sdp));
         const desc = await peer.createAnswer();
+
         peer.setLocalDescription(desc);
 
         const descMessage = {
