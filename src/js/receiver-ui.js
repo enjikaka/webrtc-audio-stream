@@ -49,7 +49,7 @@ window.onload = function () {
   const audioContext = new AudioContext();
   const analyser = audioContext.createAnalyser();
 
-  analyser.fftSize = 1024;
+  analyser.fftSize = 128;
 
   audioVisualiser.analyser = analyser;
 
