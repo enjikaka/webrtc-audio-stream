@@ -13,6 +13,42 @@ function readAsArrayBuffer (file) {
   });
 }
 
+function getMediaTags (file) {
+  return new Promise(resolve => {
+    // @ts-ignore
+    jsmediatags.read(file, {
+      onSuccess (response) {
+        const tags = response.tags;
+        const { artist, title } = tags;
+        const image = tags.picture;
+        let cover;
+
+        if (image !== undefined) {
+          const base64Data = [];
+
+          for (let i = 0; i < image.data.length; i++) {
+            base64Data.push(String.fromCharCode(image.data[i]));
+          }
+
+          const base64String = btoa(base64Data.join(''));
+
+          cover = `data:${image.format};base64,${base64String}`;
+        }
+
+        resolve({
+          title,
+          artist,
+          cover
+        });
+      },
+      onError (error) {
+        console.error(':(', error.type, error.info); // eslint-disable-line
+        resolve();
+      }
+    });
+  });
+}
+
 export default class Station {
   constructor (callback) {
     // Configuraton for peer
@@ -63,7 +99,7 @@ export default class Station {
     this.rtcConfig = rtcConfig;
     this.rtcOptionals = rtcOptionals;
     this.mediaDescription = mediaDescription;
-    this.peers = peers;
+    this._peers = peers;
     this.audioState = audioState;
     this.mediaSource = mediaSource;
     this.mediaBuffer = mediaBuffer;
@@ -75,58 +111,20 @@ export default class Station {
     this.registerSocketEvents();
   }
 
-  readID3 (file) {
-    const mediaDescription = this.mediaDescription;
-
-    return new Promise(resolve => {
-      // @ts-ignore
-      jsmediatags.read(file, {
-        onSuccess (response) {
-          const tags = response.tags;
-
-          const { artist, title } = tags;
-
-          Object.assign(mediaDescription, { artist, title });
-
-          const image = tags.picture;
-
-          if (image !== undefined) {
-            const base64Data = [];
-
-            for (let i = 0; i < image.data.length; i++) {
-              base64Data.push(String.fromCharCode(image.data[i]));
-            }
-
-            const base64String = btoa(base64Data.join(''));
-            const base64Url = `data:${image.format};base64,${base64String}`;
-
-            mediaDescription.cover = base64Url;
-          }
-
-          resolve(mediaDescription);
-        },
-        onError (error) {
-          console.error(':(', error.type, error.info); // eslint-disable-line
-          resolve();
-        }
-      });
-    });
-  }
-
   addPeer (id, peer) {
-    this.peers[id] = peer;
+    this._peers[id] = peer;
 
     this.startPlayingIfPossible(peer);
   }
 
   removePeer (id) {
-    if (this.peers[id]) {
-      delete this.peers[id];
+    if (this._peers[id]) {
+      delete this._peers[id];
     }
   }
 
-  getPeers () {
-    return Object.keys(this.peers).map(key => this.peers[key]);
+  get peers () {
+    return Object.keys(this._peers).map(key => this._peers[key]);
   }
 
   registerSocketEvents () {
@@ -179,17 +177,17 @@ export default class Station {
       this.receiverOffer(receiverId);
 
       // console.log(receiverId + ' logged on.');
-      // console.log('Now broadcasting to ' + Object.keys(this.peers).length + ' listeners.');
+      // console.log('Now broadcasting to ' + Object.keys(this._peers).length + ' listeners.');
     });
 
     socket.on('logoff', message => {
-      delete this.peers[message.from];
+      delete this._peers[message.from];
     });
 
     // when a message is received from a listener we'll update the rtc session accordingly
     socket.on('message', message => {
       // console.log('Received message: ' + JSON.stringify(message.data));
-      const receiver = this.peers[message.from];
+      const receiver = this._peers[message.from];
 
       if (message.data.type === 'candidate') {
         if (message.data.candidate) {
@@ -203,7 +201,7 @@ export default class Station {
 
   async playAudioFile (file) {
     const songMeta = this.getInfoFromFileName(file.name);
-    const newMetadata = await this.readID3(file);
+    const newMetadata = await getMediaTags(file);
 
     this.mediaDescription = {
       duration: null,
@@ -266,7 +264,7 @@ export default class Station {
 
   async receiverOffer (receiverId) {
     /** @type {RTCPeerConnection} */
-    const peerConnection = this.peers[receiverId].peerConnection;
+    const peerConnection = this._peers[receiverId].peerConnection;
 
     const offer = await peerConnection.createOffer();
 
@@ -293,13 +291,11 @@ export default class Station {
   }
 
   sendMediaDescription () {
-    this.getPeers().forEach(peer => {
-      console.log(this.mediaDescription);
-
-      const data = Object.assign({ to: peer.id }, this.mediaDescription);
-
-      this.socket.emit('image-data', data);
-    });
+    this.peers
+      .forEach(peer => this.socket.emit('image-data', {
+        to: peer.id,
+        ...this.mediaDescription
+      }));
   }
 
   playStream () {
@@ -307,21 +303,19 @@ export default class Station {
     this.mediaSource.buffer = this.mediaBuffer;
     // this.mediaSource.playbackRate.value = 1.3;
     this.mediaSource.start(0);
-    this.mediaDescription.starttime = Date.now();
     // mediaSource.connect(gainNode);
 
     // setup remote stream
     this.remoteDestination = this.context.createMediaStreamDestination();
     this.mediaSource.connect(this.remoteDestination);
 
-    this.getPeers().forEach(peer => {
-      this.startPlayingIfPossible(peer);
-    });
+    this.peers
+      .forEach(peer => this.startPlayingIfPossible(peer));
   }
 
   // stops playing the stream and removes the stream from peer connections
   stopStream () {
-    this.getPeers().forEach(peer => {
+    this.peers.forEach(peer => {
       if (peer.stream) {
         peer.stream.stop();
         // peer.peerConnection.removeStream(peer.stream);
