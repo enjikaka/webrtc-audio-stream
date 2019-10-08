@@ -87,7 +87,9 @@ window.onload = function () {
     audioElement.addEventListener('play', () => audioVisualiser.start());
     audioElement.addEventListener('pause', () => audioVisualiser.stop());
 
-    chat = new ReceiverChat(station, 'Jeremy');
+    const chatName = this.prompt('What is your name?');
+
+    chat = new ReceiverChat(station, chatName);
 
     registerChatHandler();
 

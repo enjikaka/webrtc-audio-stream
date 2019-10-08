@@ -69,6 +69,6 @@ io.sockets.on('connection', socket => {
   });
 
   socket.on('chat', data => {
-    sockets[data.station].emit('chat', data);
+    sockets[data.station].broadcast.emit('chat', data);
   });
 });
