@@ -4,11 +4,9 @@ export default class ReceiverChat {
   constructor (station, id) {
     const socket = io.connect();
 
-    Object.assign(this, {
-      id,
-      station,
-      socket
-    });
+    this.id = id;
+    this.station = station;
+    this.socket = socket;
   }
 
   sendMessage (message) {
@@ -25,7 +23,10 @@ export default class ReceiverChat {
     const { socket } = this;
 
     socket.on('chat', data => {
-      messageCallback(data);
+      // TODO solve correctly...
+      if (data.station === this.station) {
+        messageCallback(data);
+      }
     });
   }
 }
