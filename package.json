@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "Simple WebRTC server for Node.js",
   "author": "Jeremy Karlsson <karlsson@jeremy.se>",
+  "scripts": {
+    "start": "node server.js"
+  },
   "keywords": [
     "webrtc",
     "stream",
@@ -15,15 +18,14 @@
     "linux"
   ],
   "dependencies": {
-    "express": "^4.13.3",
-    "node-static": ">= 0.7.x",
+    "express": "^4.17.1",
     "node-uuid": ">= 1.4.x",
-    "open": "0.0.5",
-    "socket.io": ">= 0.9.x"
+    "open": "^6.4.0",
+    "socket.io": "^2.3.0"
   },
   "license": "BSD-3-Clause",
   "devDependencies": {
-    "eslint": "^3.12.2",
-    "eslint-config-tidal": "^1.1.0"
+    "eslint": "^6.5.1",
+    "eslint-config-tidal": "^1.2.0"
   }
 }

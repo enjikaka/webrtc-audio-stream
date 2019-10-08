@@ -4,7 +4,7 @@ import Receiver from './receiver.js';
 import ReceiverChat from './receiver-chat.js';
 import { $, $$ } from './fake-jquery.js';
 
-import 'https://unpkg.com/audio-visualiser?module';
+import 'https://cdn.pika.dev/audio-visualiser/v1';
 
 let receiver;
 let chat;
