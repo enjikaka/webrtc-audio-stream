@@ -14,7 +14,7 @@ function readAsArrayBuffer (file) {
 }
 
 export default class Station {
-  constructor (stationName, callback) {
+  constructor (callback) {
     // Configuraton for peer
     const rtcConfig = {
       iceServers: [
