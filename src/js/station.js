@@ -116,9 +116,7 @@ export default class Station {
   addPeer (id, peer) {
     this.peers[id] = peer;
 
-    if (this.mediaSource) {
-      this.startPlayingIfPossible(peer);
-    }
+    this.startPlayingIfPossible(peer);
   }
 
   removePeer (id) {
