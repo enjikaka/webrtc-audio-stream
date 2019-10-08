@@ -203,28 +203,15 @@ export default class Station {
 
   async playAudioFile (file) {
     const songMeta = this.getInfoFromFileName(file.name);
+    const newMetadata = await this.readID3(file);
 
     this.mediaDescription = {
-      title: songMeta.title,
-      artist: songMeta.artist,
-      cover: null,
       duration: null,
-      startTime: null
+      startTime: null,
+      title: newMetadata.title || songMeta.title,
+      artist: newMetadata.artist || songMeta.artist,
+      cover: newMetadata.cover || null
     };
-
-    const newMetadata = await this.readID3(file).then(metadata => {
-      if (!metadata.title) {
-        metadata.title = file.name.indexOf('-') !== -1 ? file.name.split('-')[0] : 'Unkown';
-      }
-
-      if (!metadata.artist) {
-        metadata.artist = file.name.indexOf('-') !== -1 ? file.name.split('-')[1].split('.')[0] : 'Unkown';
-      }
-
-      return metadata;
-    });
-
-    Object.assign(this.mediaDescription, newMetadata);
 
     const arrayBuffer = await readAsArrayBuffer(file);
 
@@ -236,7 +223,6 @@ export default class Station {
 
       this.mediaBuffer = audioBuffer;
       this.playStream();
-      this.mediaDescription.startTime = Date.now();
     });
   }
 
@@ -270,7 +256,10 @@ export default class Station {
       name = name[1];
     }
 
-    const title = name.split('.')[0];
+    const titleChunks = name.split('.');
+
+    titleChunks.pop();
+    const title = titleChunks.join('.');
 
     return { artist, title };
   }
