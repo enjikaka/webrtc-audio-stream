@@ -48,6 +48,12 @@ window.onload = function () {
   const audioElement = $('audio');
   const audioVisualiser = $('audio-visualiser');
 
+  const playPlay = $('#playplay');
+
+  playPlay.addEventListener('click', () => {
+    audioElement.play();
+  });
+
   const audioContext = new AudioContext();
   const analyser = audioContext.createAnalyser();
 
