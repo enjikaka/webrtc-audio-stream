@@ -78,12 +78,6 @@ export default class Station {
 
     const peers = {};
 
-    const audioState = {
-      stopTime: undefined,
-      startTime: undefined,
-      muted: false
-    };
-
     let mediaSource;
     let mediaBuffer;
     let remoteDestination;
@@ -94,13 +88,13 @@ export default class Station {
 
     gainNode.connect(context.destination);
 
+    // @ts-ignore
     const socket = io.connect();
 
     this.rtcConfig = rtcConfig;
     this.rtcOptionals = rtcOptionals;
     this.mediaDescription = mediaDescription;
     this._peers = peers;
-    this.audioState = audioState;
     this.mediaSource = mediaSource;
     this.mediaBuffer = mediaBuffer;
     this.remoteDestination = remoteDestination;
@@ -226,12 +220,10 @@ export default class Station {
 
   stop () {
     this.stopStream();
-    this.audioState.playing = false;
   }
 
   play () {
     this.playStream();
-    this.audioState.playing = true;
   }
 
   set mediaDescription (data) {
