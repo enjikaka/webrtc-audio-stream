@@ -167,6 +167,8 @@ export default class Station {
           }
         };
 
+        console.log(event);
+
         socket.emit('message', eventMessage);
       };
 
@@ -282,22 +284,21 @@ export default class Station {
     return { artist, title };
   }
 
-  receiverOffer (receiverId) {
-    const receiver = this.peers[receiverId];
+  async receiverOffer (receiverId) {
+    /** @type {RTCPeerConnection} */
+    const peerConnection = this.peers[receiverId].peerConnection;
 
-    receiver.peerConnection.createOffer(desc => {
-      receiver.peerConnection.setLocalDescription(desc);
+    const offer = await peerConnection.createOffer();
 
-      this.socket.emit('message', {
-        from: this.stationName,
-        to: receiver.id,
-        data: {
-          type: 'sdp',
-          sdp: desc
-        }
-      });
-    }, e => {
-      console.error(e); // eslint-disable-line
+    await peerConnection.setLocalDescription(offer);
+
+    this.socket.emit('message', {
+      from: this.stationName,
+      to: receiverId,
+      data: {
+        type: 'sdp',
+        sdp: offer
+      }
     });
   }
 
