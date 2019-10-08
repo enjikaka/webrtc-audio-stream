@@ -6,6 +6,8 @@ import { $, $$ } from './fake-jquery.js';
 
 import 'https://cdn.pika.dev/audio-visualiser/v1';
 
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
 let receiver;
 let chat;
 

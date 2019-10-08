@@ -1,6 +1,8 @@
 /* globals jsmediatags, io */
 /* eslint-env browser */
 
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
 function readAsArrayBuffer (file) {
   return new Promise(resolve => {
     const reader = new FileReader();
