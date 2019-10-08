@@ -165,8 +165,6 @@ export default class Station {
           }
         };
 
-        console.log(event);
-
         socket.emit('message', eventMessage);
       };
 
@@ -243,17 +241,12 @@ export default class Station {
   }
 
   stop () {
-    const offset = this.audioState.stopTime - this.audioState.startTime;
-
-    this.stopStream(offset);
+    this.stopStream();
     this.audioState.playing = false;
   }
 
   play () {
-    const offset = this.audioState.stopTime - this.audioState.startTime;
-
-    this.playStream(offset);
-    this.mediaDescription.startTime = Date.now() - offset;
+    this.playStream();
     this.audioState.playing = true;
   }
 
@@ -332,11 +325,6 @@ export default class Station {
     this.remoteDestination = this.context.createMediaStreamDestination();
     this.mediaSource.connect(this.remoteDestination);
 
-    this.remoteDestination.stream.getAudioTracks()[0].applyConstraints({ noiseSuppression: [true] });
-
-    console.log(this.remoteDestination.stream.getAudioTracks()[0].getCapabilities());
-    console.log(this.remoteDestination.stream.getAudioTracks()[0].getConstraints());
-
     this.getPeers().forEach(peer => {
       this.startPlayingIfPossible(peer);
     });
@@ -356,24 +344,4 @@ export default class Station {
       this.mediaSource.stop(0);
     }
   }
-
-  /*
-  // Sets the volume
-  function changeVolume (element) {
-    const fraction = parseInt(element.value, 10) / parseInt(element.max, 10);
-
-    gainNode.gain.value = fraction * fraction;
-  }
-
-  // mutes the volume
-  function toggleMute () {
-    if (muted) {
-      gainNode.gain.value = muted;
-      muted = undefined;
-    } else {
-      muted = gainNode.gain.value;
-      gainNode.gain.value = 0;
-    }
-  }
-  */
 }
